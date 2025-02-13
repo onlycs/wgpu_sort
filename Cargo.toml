@@ -8,8 +8,8 @@ description = " WebGPU/wgpu Radix Key-Value Sort "
 repository = "https://github.com/KeKsBoTer/wgpu_sort"
 homepage = "https://github.com/KeKsBoTer/wgpu_sort"
 documentation = "https://docs.rs/wgpu_sort"
-keywords = ["wgpu", "gpu", "sort","radxi","wgpu"]
-categories = ["rendering","algorithms"]
+keywords = ["wgpu", "gpu", "sort", "radxi", "wgpu"]
+categories = ["rendering", "algorithms"]
 readme = "README.md"
 
 
@@ -17,7 +17,7 @@ readme = "README.md"
 all-features = true
 
 [dependencies]
-wgpu = { version = "0.20" }
+wgpu = { version = "24.0.1" }
 bytemuck = { version = "1.13.0", features = ["derive"] }
 futures-intrusive = "0.5.0"
 
@@ -27,9 +27,9 @@ env_logger = "0.11"
 
 [dev-dependencies]
 rand = "0.8.5"
-pollster = { version = "0.3.0", features = ["macro"] }
+pollster = { version = "0.4.0", features = ["macro"] }
 float-ord = "0.3.2"
-criterion = { version = "0.4", features = ["html_reports"] }
+criterion = { version = "0.5.1", features = ["html_reports"] }
 
 
 [[bench]]
