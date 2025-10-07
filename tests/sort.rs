@@ -171,7 +171,7 @@ where
         &device,
         &queue,
         0..sort_buffers.keys_valid_size(),
-    )
+    
     .await;
     assert_eq!(
         keys_sorted_gpu[0..n_sorted as usize], keys_sorted[0..n_sorted as usize],
