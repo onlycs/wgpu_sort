@@ -8,7 +8,7 @@ use wgpu::util::DeviceExt;
 use crate::GPUSorter;
 
 #[doc(hidden)]
-/// only used for testing 
+/// only used for testing
 /// temporally used for guessing subgroup size
 pub fn upload_to_buffer<T: bytemuck::Pod>(
     encoder: &mut wgpu::CommandEncoder,
@@ -25,7 +25,7 @@ pub fn upload_to_buffer<T: bytemuck::Pod>(
 }
 
 #[doc(hidden)]
-/// only used for testing 
+/// only used for testing
 /// temporally used for guessing subgroup size
 pub async fn download_buffer<T: Clone + bytemuck::Pod>(
     buffer: &wgpu::Buffer,
@@ -50,11 +50,11 @@ pub async fn download_buffer<T: Clone + bytemuck::Pod>(
     let buffer_slice = download_buffer.slice(range);
     let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
     buffer_slice.map_async(wgpu::MapMode::Read, move |result| tx.send(result).unwrap());
-    device.poll(wgpu::Maintain::Wait);
+    device.poll(wgpu::PollType::Wait).unwrap();
     rx.receive().await.unwrap().unwrap();
 
     let data = buffer_slice.get_mapped_range();
-    return bytemuck::cast_slice(data.deref()).to_vec();
+    bytemuck::cast_slice(data.deref()).to_vec()
 }
 
 async fn test_sort(sorter: &GPUSorter, device: &wgpu::Device, queue: &wgpu::Queue) -> bool {
@@ -70,23 +70,28 @@ async fn test_sort(sorter: &GPUSorter, device: &wgpu::Device, queue: &wgpu::Queu
     });
     upload_to_buffer(
         &mut encoder,
-        &sort_buffers.keys(),
+        sort_buffers.keys(),
         device,
         scrambled_data.as_slice(),
     );
 
-    sorter.sort(&mut encoder, queue, &sort_buffers,None);
+    sorter.sort(&mut encoder, queue, &sort_buffers, None);
     let idx = queue.submit([encoder.finish()]);
-    device.poll(wgpu::Maintain::WaitForSubmissionIndex(idx));
+    device
+        .poll(wgpu::PollType::WaitForSubmissionIndex(idx))
+        .unwrap();
 
     let sorted = download_buffer::<f32>(
-        &sort_buffers.keys(),
+        sort_buffers.keys(),
         device,
         queue,
         0..sort_buffers.keys_valid_size(),
     )
     .await;
-    return sorted.into_iter().zip(sorted_data.into_iter()).all(|(a,b)|a==b);
+    sorted
+        .into_iter()
+        .zip(sorted_data.into_iter())
+        .all(|(a, b)| a == b)
 }
 
 /// Function guesses the best subgroup size by testing the sorter with
@@ -98,12 +103,12 @@ pub async fn guess_workgroup_size(device: &wgpu::Device, queue: &wgpu::Queue) ->
 
     let mut best = None;
     for subgroup_size in [1, 8, 16, 32, 64, 128] {
-        log::debug!("Checking sorting with subgroupsize {}", subgroup_size);
+        log::debug!("Checking sorting with subgroupsize {subgroup_size}");
 
         cur_sorter = GPUSorter::new(device, subgroup_size);
         let sort_success = test_sort(&cur_sorter, device, queue).await;
 
-        log::debug!("{} worked: {}", subgroup_size, sort_success);
+        log::debug!("{subgroup_size} worked: {sort_success}");
 
         if !sort_success {
             break;
@@ -111,5 +116,5 @@ pub async fn guess_workgroup_size(device: &wgpu::Device, queue: &wgpu::Queue) ->
             best = Some(subgroup_size)
         }
     }
-    return best;
+    best
 }

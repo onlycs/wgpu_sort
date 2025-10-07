@@ -96,29 +96,17 @@ impl GPUSorter {
 
         // TODO replace with this with pipeline-overridable constants once they are available
         let shader_w_const = format!(
-            "const histogram_sg_size: u32 = {:}u;\n\
-            const histogram_wg_size: u32 = {:}u;\n\
-            const rs_radix_log2: u32 = {:}u;\n\
-            const rs_radix_size: u32 = {:}u;\n\
-            const rs_keyval_size: u32 = {:}u;\n\
-            const rs_histogram_block_rows: u32 = {:}u;\n\
-            const rs_scatter_block_rows: u32 = {:}u;\n\
-            const rs_mem_dwords: u32 = {:}u;\n\
-            const rs_mem_sweep_0_offset: u32 = {:}u;\n\
-            const rs_mem_sweep_1_offset: u32 = {:}u;\n\
-            const rs_mem_sweep_2_offset: u32 = {:}u;\n{:}",
-            histogram_sg_size,
-            HISTOGRAM_WG_SIZE,
-            RS_RADIX_LOG2,
-            RS_RADIX_SIZE,
-            RS_KEYVAL_SIZE,
-            RS_HISTOGRAM_BLOCK_ROWS,
-            RS_SCATTER_BLOCK_ROWS,
-            rs_mem_dwords,
-            rs_mem_sweep_0_offset,
-            rs_mem_sweep_1_offset,
-            rs_mem_sweep_2_offset,
-            raw_shader
+            "const histogram_sg_size: u32 = {histogram_sg_size:}u;\n\
+            const histogram_wg_size: u32 = {HISTOGRAM_WG_SIZE:}u;\n\
+            const rs_radix_log2: u32 = {RS_RADIX_LOG2:}u;\n\
+            const rs_radix_size: u32 = {RS_RADIX_SIZE:}u;\n\
+            const rs_keyval_size: u32 = {RS_KEYVAL_SIZE:}u;\n\
+            const rs_histogram_block_rows: u32 = {RS_HISTOGRAM_BLOCK_ROWS:}u;\n\
+            const rs_scatter_block_rows: u32 = {RS_SCATTER_BLOCK_ROWS:}u;\n\
+            const rs_mem_dwords: u32 = {rs_mem_dwords:}u;\n\
+            const rs_mem_sweep_0_offset: u32 = {rs_mem_sweep_0_offset:}u;\n\
+            const rs_mem_sweep_1_offset: u32 = {rs_mem_sweep_1_offset:}u;\n\
+            const rs_mem_sweep_2_offset: u32 = {rs_mem_sweep_2_offset:}u;\n{raw_shader:}",
         );
         let shader_code = shader_w_const
             .replace(
@@ -173,17 +161,17 @@ impl GPUSorter {
             cache: None,
         });
 
-        return Self {
+        Self {
             zero_p,
             histogram_p,
             prefix_p,
             scatter_even_p,
             scatter_odd_p,
-        };
+        }
     }
 
     fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
-        return device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("radix sort bind group layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
@@ -249,7 +237,7 @@ impl GPUSorter {
                     count: None,
                 },
             ],
-        });
+        })
     }
 
     fn create_keyval_buffers(
@@ -293,7 +281,7 @@ impl GPUSorter {
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
-        return (keys, keys_aux, payload, payload_aux);
+        (keys, keys_aux, payload, payload_aux)
     }
 
     // calculates and allocates a buffer that is sufficient for holding all needed information for
@@ -317,13 +305,12 @@ impl GPUSorter {
 
         let internal_size = (RS_KEYVAL_SIZE + scatter_blocks_ru) * histo_size; // +1 safety
 
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Internal radix sort buffer"),
             size: internal_size as u64,
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
-        });
-        return buffer;
+        })
     }
 
     fn general_info_data(length: u32) -> SorterState {
@@ -352,7 +339,7 @@ impl GPUSorter {
 
             pass.set_pipeline(&self.zero_p);
             pass.set_bind_group(0, bind_group, &[]);
-            pass.dispatch_workgroups(hist_blocks_ru as u32, 1, 1);
+            pass.dispatch_workgroups(hist_blocks_ru, 1, 1);
         }
 
         {
@@ -363,7 +350,7 @@ impl GPUSorter {
 
             pass.set_pipeline(&self.histogram_p);
             pass.set_bind_group(0, bind_group, &[]);
-            pass.dispatch_workgroups(hist_blocks_ru as u32, 1, 1);
+            pass.dispatch_workgroups(hist_blocks_ru, 1, 1);
         }
     }
 
@@ -409,7 +396,7 @@ impl GPUSorter {
 
         pass.set_pipeline(&self.prefix_p);
         pass.set_bind_group(0, bind_group, &[]);
-        pass.dispatch_workgroups(NUM_PASSES as u32, 1, 1);
+        pass.dispatch_workgroups(NUM_PASSES, 1, 1);
     }
 
     fn record_scatter_keys(
@@ -427,16 +414,16 @@ impl GPUSorter {
 
         pass.set_bind_group(0, bind_group, &[]);
         pass.set_pipeline(&self.scatter_even_p);
-        pass.dispatch_workgroups(scatter_blocks_ru as u32, 1, 1);
+        pass.dispatch_workgroups(scatter_blocks_ru, 1, 1);
 
         pass.set_pipeline(&self.scatter_odd_p);
-        pass.dispatch_workgroups(scatter_blocks_ru as u32, 1, 1);
+        pass.dispatch_workgroups(scatter_blocks_ru, 1, 1);
 
         pass.set_pipeline(&self.scatter_even_p);
-        pass.dispatch_workgroups(scatter_blocks_ru as u32, 1, 1);
+        pass.dispatch_workgroups(scatter_blocks_ru, 1, 1);
 
         pass.set_pipeline(&self.scatter_odd_p);
-        pass.dispatch_workgroups(scatter_blocks_ru as u32, 1, 1);
+        pass.dispatch_workgroups(scatter_blocks_ru, 1, 1);
     }
 
     fn record_scatter_keys_indirect(
@@ -517,8 +504,8 @@ impl GPUSorter {
         let length = length.get();
 
         let (keys_a, keys_b, payload_a, payload_b) =
-            GPUSorter::create_keyval_buffers(&device, length);
-        let internal_mem_buffer = self.create_internal_mem_buffer(&device, length);
+            GPUSorter::create_keyval_buffers(device, length);
+        let internal_mem_buffer = self.create_internal_mem_buffer(device, length);
 
         let uniform_infos = Self::general_info_data(length);
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -611,6 +598,7 @@ pub struct SortBuffers {
 
 impl SortBuffers {
     /// number of key-value pairs that can be stored in this buffer
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> u32 {
         self.length
     }
@@ -641,12 +629,12 @@ impl SortBuffers {
 }
 
 fn scatter_blocks_ru(n: u32) -> u32 {
-    (n + SCATTER_BLOCK_KVS - 1) / SCATTER_BLOCK_KVS
+    n.div_ceil(SCATTER_BLOCK_KVS)
 }
 
 /// number of histogram blocks required
 fn histo_blocks_ru(n: u32) -> u32 {
-    (scatter_blocks_ru(n) * SCATTER_BLOCK_KVS + HISTO_BLOCK_KVS - 1) / HISTO_BLOCK_KVS
+    (scatter_blocks_ru(n) * SCATTER_BLOCK_KVS).div_ceil(HISTO_BLOCK_KVS)
 }
 
 /// keys buffer must be multiple of HISTO_BLOCK_KVS
